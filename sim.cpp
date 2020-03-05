@@ -311,7 +311,7 @@ int main(int argc, char *argv[])
 	print(corrPred, branches);
 	cout << endl;
 
-///*
+/*
 //1bit bimodal predictor for pred table size:
 //16, 32, 128, 256, 512, 1024, and 2048;
 	for(int i = 16; i < 64; i = i * 2)
@@ -352,7 +352,7 @@ int main(int argc, char *argv[])
 	tournamentPredictor(corrPred, branches, file, 2048, 2047);
 	print(corrPred, branches);
 	cout << endl;
-//*/
+*/
 
 	file.close();
 	return EXIT_SUCCESS;
