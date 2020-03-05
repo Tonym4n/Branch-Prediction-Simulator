@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <vector>
+#include <algorithm>
 
 //#define NDEBUG
 #include <cassert>
@@ -42,7 +44,7 @@ unsigned int convert(string behavior)
 }
 
 //prediction based on always taken("T"), or always not-taken("NT");
-void alwaysPrediction(unsigned long long int& cp, 
+void alwaysPredictor(unsigned long long int& cp, 
 	unsigned long long int& b,
 	ifstream& f,
 	string tempBehavior)
@@ -60,20 +62,17 @@ void alwaysPrediction(unsigned long long int& cp,
 }
 
 //prediction based on a 1 bit bimodal prediction table("T", "NT");
-void oneBitBimodalPrediction(unsigned long long int& cp, 
+void oneBitBimodalPredictor(unsigned long long int& cp, 
 	unsigned long long int& b,
+	vector<unsigned int>& v,
 	ifstream& f,
-	int predTableSize)
+	int s)
 {
-	assert(predTableSize > 0 && "prediction table size must be > 0");
-	
-	resetIfstream(f);
 	unsigned long long int addr, target;
 	string behavior;
-	unsigned int table[predTableSize], tableIndex;
+	unsigned int tableIndex;
 	//all predictions are initially taken("T" = 2);
-	for(int i = 0; i < predTableSize; i++)
-		table[i] = 2;
+	v = vector<unsigned int>(s, 2);
 
 	while(f >> std::hex >> addr >> behavior >> target)
 	{
@@ -82,83 +81,135 @@ void oneBitBimodalPrediction(unsigned long long int& cp,
 
 		//get lower bits of the addr to index into prediction table;
 		//-1 because index starts at 0 instead of 1;
-		tableIndex = addr & (predTableSize - 1);
-		if(behaviorBit == table[tableIndex])
+		tableIndex = addr & (s - 1);
+		if(behaviorBit == v.at(tableIndex))
 			cp++;
-		//swap if prediction is incorrect since it's only 1 bit;
 		else
-			table[tableIndex] = behaviorBit;
+			v.at(tableIndex) = behaviorBit;
 	}
 }
 
 //prediction based on a 2 bit bimodal prediction table("NN", "NT", "T", "TT");
 //NN = strongly not-taken, NT = not-taken, T = taken, and TT = strongly taken;
-void twoBitBimodalPrediction(unsigned long long int& cp, 
+void twoBitBimodalPredictor(unsigned long long int& cp, 
 	unsigned long long int& b,
+	vector<unsigned int>& v,
 	ifstream& f,
-	int predTableSize)
+	int s)
 {
-	assert(predTableSize > 0 && "prediction table size must be > 0");
-	
-	resetIfstream(f);
 	unsigned long long int addr, target;
 	string behavior;
-	unsigned int table[predTableSize], tableIndex;
-
+	unsigned int tableIndex;
 	//all predictions are initially strongly taken("TT" = 3);
-	for(int i = 0; i < predTableSize; i++)
-		table[i] = 3;
+	v = vector<unsigned int>(s, 3);
 
 	while(f >> std::hex >> addr >> behavior >> target)
 	{
 		b++;
 		unsigned int behaviorBit = convert(behavior);
+		//mask msb to determine if its taken(2) or not-taken(0);
+		behaviorBit = behaviorBit & 2;
+		tableIndex = addr & (s - 1);
 
-		//get lower bits of the addr to index into prediction table;
-		//-1 because index starts at 0 instead of 1;
-		tableIndex = addr & (predTableSize - 1);
-		if(behaviorBit == table[tableIndex])
+		if(behaviorBit == (v.at(tableIndex) & 2))
 			cp++;
-		//swap if prediction is incorrect since it's only 1 bit;
-		else
-			table[tableIndex] = behaviorBit;
+
+		//don't go above or below 2 bits;
+		if(behaviorBit == 2)
+		{
+			if(v.at(tableIndex) < 3)
+				v.at(tableIndex)++;
+		}
+		else if(behaviorBit == 0)
+		{
+			if(v.at(tableIndex) > 0)
+				v.at(tableIndex)--;
+		}
 	}
+}
+
+void bimodalPredictor(unsigned long long int& cp, 
+	unsigned long long int& b,
+	vector<unsigned int>& v,
+	ifstream& f,
+	int predTableSize,
+	int type)
+{
+	assert(predTableSize > 0 && "prediction table size must be > 0");
+	resetIfstream(f);
+
+	if(type == 1)
+		oneBitBimodalPredictor(cp, b, v, f, predTableSize);
+	else if(type == 2)
+		twoBitBimodalPredictor(cp, b, v, f, predTableSize);
+	else
+		exit(EXIT_FAILURE);
+}
+
+void gsharePredictor(unsigned long long int& cp, 
+	unsigned long long int& b,
+	vector<unsigned int>& v,
+	ifstream& f,
+	int predTableSize)
+{
+	assert(predTableSize > 0 && "prediction table size must be > 0");
+	resetIfstream(f);
 }
 
 int main(int argc, char *argv[]) 
 {
 	unsigned long long int corrPred, branches;
 	corrPred = branches = 0;
+	vector<unsigned int> predTable;
 
-	ifstream file("test_input.txt");
-//	ifstream file("short_trace1.txt");
+//	ifstream file("test_input.txt");
+	ifstream file("short_trace1.txt");
 	if(!file.is_open())
 		exit(EXIT_FAILURE);
 
-	alwaysPrediction(corrPred, branches, file, "T");
+	alwaysPredictor(corrPred, branches, file, "T");
 	print(corrPred, branches);
 	cout << endl;
 
-	alwaysPrediction(corrPred, branches, file, "NT");
+	alwaysPredictor(corrPred, branches, file, "NT");
 	print(corrPred, branches);
 	cout << endl;
+
 /*
-	oneBitBimodalPrediction(corrPred, branches, file, 16);
+	bimodalPredictor(corrPred, branches, predTable, file, 16, 1);
 	print(corrPred, branches);
-	oneBitBimodalPrediction(corrPred, branches, file, 32);
+	bimodalPredictor(corrPred, branches, predTable, file, 32, 1);
 	print(corrPred, branches);
-	oneBitBimodalPrediction(corrPred, branches, file, 128);
+	bimodalPredictor(corrPred, branches, predTable, file, 128, 1);
 	print(corrPred, branches);
-	oneBitBimodalPrediction(corrPred, branches, file, 256);
+	bimodalPredictor(corrPred, branches, predTable, file, 256, 1);
 	print(corrPred, branches);
-	oneBitBimodalPrediction(corrPred, branches, file, 512);
+	bimodalPredictor(corrPred, branches, predTable, file, 512, 1);
 	print(corrPred, branches);
-	oneBitBimodalPrediction(corrPred, branches, file, 1024);
+	bimodalPredictor(corrPred, branches, predTable, file, 1024, 1);
 	print(corrPred, branches);
-	oneBitBimodalPrediction(corrPred, branches, file, 2048);
+	bimodalPredictor(corrPred, branches, predTable, file, 2048, 1);
+	print(corrPred, branches);
+	cout << endl;
+
+	bimodalPredictor(corrPred, branches, predTable, file, 16, 2);
+	print(corrPred, branches);
+	bimodalPredictor(corrPred, branches, predTable, file, 32, 2);
+	print(corrPred, branches);
+	bimodalPredictor(corrPred, branches, predTable, file, 128, 2);
+	print(corrPred, branches);
+	bimodalPredictor(corrPred, branches, predTable, file, 256, 2);
+	print(corrPred, branches);
+	bimodalPredictor(corrPred, branches, predTable, file, 512, 2);
+	print(corrPred, branches);
+	bimodalPredictor(corrPred, branches, predTable, file, 1024, 2);
+	print(corrPred, branches);
+	bimodalPredictor(corrPred, branches, predTable, file, 2048, 2);
 	print(corrPred, branches);
 	cout << endl;
 */
+
+
 	file.close();
 	return EXIT_SUCCESS;
 }
