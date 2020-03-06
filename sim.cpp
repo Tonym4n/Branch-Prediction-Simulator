@@ -18,7 +18,7 @@ void resetIfstream(ifstream& f)
 }
 
 //to output file + reset # of correct predictions and branches;
-void print(unsigned long long int& cp,unsigned long long int& b)
+void printAndReset(int& cp,int& b)
 {
 	cout << cp << "," << b << "; ";
 	cp = b = 0;
@@ -44,8 +44,8 @@ unsigned int convert(string behavior)
 }
 
 //prediction based on always taken("T"), or always not-taken("NT");
-void alwaysPredictor(unsigned long long int& cp, 
-	unsigned long long int& b,
+void alwaysPredictor(int& cp, 
+	int& b,
 	ifstream& f,
 	string tempBehavior)
 {
@@ -62,8 +62,8 @@ void alwaysPredictor(unsigned long long int& cp,
 }
 
 //prediction based on a 1 bit bimodal prediction table("T", "NT");
-void oneBitBimodalPredictor(unsigned long long int& cp, 
-	unsigned long long int& b,
+void oneBitBimodalPredictor(int& cp, 
+	int& b,
 	ifstream& f,
 	int s)
 {
@@ -71,7 +71,7 @@ void oneBitBimodalPredictor(unsigned long long int& cp,
 	string behavior;
 	unsigned int pcIndex;
 	//all predictions are initially taken("T" = 2);
-	vector<unsigned int> v = vector<unsigned int>(s, 2);
+	vector<unsigned int> biTable = vector<unsigned int>(s, 2);
 
 	while(f >> std::hex >> addr >> behavior >> target)
 	{
@@ -79,19 +79,18 @@ void oneBitBimodalPredictor(unsigned long long int& cp,
 		unsigned int behaviorBit = convert(behavior);
 
 		//get lower bits of the addr to index into prediction table;
-		//-1 because index starts at 0 instead of 1;
 		pcIndex = addr & (s - 1);
-		if(behaviorBit == v.at(pcIndex))
+		if(behaviorBit == biTable.at(pcIndex))
 			cp++;
 		else
-			v.at(pcIndex) = behaviorBit;
+			biTable.at(pcIndex) = behaviorBit;
 	}
 }
 
 //prediction based on a 2 bit bimodal prediction table("NN", "NT", "T", "TT");
 //NN = strongly not-taken, NT = not-taken, T = taken, and TT = strongly taken;
-void twoBitBimodalPredictor(unsigned long long int& cp, 
-	unsigned long long int& b,
+void twoBitBimodalPredictor(int& cp, 
+	int& b,
 	ifstream& f,
 	int s)
 {
@@ -99,35 +98,34 @@ void twoBitBimodalPredictor(unsigned long long int& cp,
 	string behavior;
 	unsigned int pcIndex;
 	//all predictions are initially strongly taken("TT" = 3);
-	vector<unsigned int> v = vector<unsigned int>(s, 3);
+	vector<unsigned int> biTable = vector<unsigned int>(s, 3);
 
 	while(f >> std::hex >> addr >> behavior >> target)
 	{
 		b++;
-		unsigned int behaviorBit = convert(behavior);
 		//mask msb to determine if its taken(2) or not-taken(0);
-		behaviorBit = behaviorBit & 2;
+		unsigned int behaviorBit = convert(behavior) & 2;
 		pcIndex = addr & (s - 1);
 
-		if(behaviorBit == (v.at(pcIndex) & 2))
+		if(behaviorBit == (biTable.at(pcIndex) & 2))
 			cp++;
 
 		//don't go above or below 2 bits;
 		if(behaviorBit == 2)
 		{
-			if(v.at(pcIndex) < 3)
-				v.at(pcIndex)++;
+			if(biTable.at(pcIndex) < 3)
+				biTable.at(pcIndex)++;
 		}
 		else if(behaviorBit == 0)
 		{
-			if(v.at(pcIndex) > 0)
-				v.at(pcIndex)--;
+			if(biTable.at(pcIndex) > 0)
+				biTable.at(pcIndex)--;
 		}
 	}
 }
 
-void bimodalPredictor(unsigned long long int& cp, 
-	unsigned long long int& b,
+void bimodalPredictor(int& cp, 
+	int& b,
 	ifstream& f,
 	int predTableSize,
 	int type)
@@ -145,30 +143,29 @@ void bimodalPredictor(unsigned long long int& cp,
 
 //prediction based on a 2 bit bimodal prediction table;
 //using the global history register to index it;
-void gsharePredictor(unsigned long long int& cp, 
-	unsigned long long int& b,
+void gsharePredictor(int& cp, 
+	int& b,
 	ifstream& f,
 	int predTableSize,
 	unsigned int gHRMask)
 {
-	assert(predTableSize > 0 && gHRMask >= 0 && "prediction table size must be > 0");
+	assert(predTableSize > 0 && "prediction table size must be > 0");
 	resetIfstream(f);
 
 	unsigned long long int addr, target;
 	string behavior;
-	vector<unsigned int> v = vector<unsigned int>(predTableSize, 3);
+	vector<unsigned int> biTable = vector<unsigned int>(predTableSize, 3);
 	unsigned int gHR = 0, gTableIndex;
 
 	while(f >> std::hex >> addr >> behavior >> target)
 	{
 		b++;
 
-		unsigned int behaviorBit = convert(behavior);
-		behaviorBit = behaviorBit & 2;
+		unsigned int behaviorBit = convert(behavior) & 2;
 		//pred table index = PC bits XOR gHR bits;
 		gTableIndex = (addr & (predTableSize - 1)) ^ (gHR & gHRMask);
 
-		if(behaviorBit == (v.at(gTableIndex) & 2))
+		if(behaviorBit == (biTable.at(gTableIndex) & 2))
 			cp++;
 
 		//update gHR;
@@ -176,26 +173,26 @@ void gsharePredictor(unsigned long long int& cp,
 		if(behaviorBit == 2)
 		{
 			gHR = gHR | 1;
-			if(v.at(gTableIndex) < 3)
-				v.at(gTableIndex)++;
+			if(biTable.at(gTableIndex) < 3)
+				biTable.at(gTableIndex)++;
 		}
 		else if(behaviorBit == 0)
 		{
-			if(v.at(gTableIndex) > 0)
-				v.at(gTableIndex)--;
+			if(biTable.at(gTableIndex) > 0)
+				biTable.at(gTableIndex)--;
 		}
 	}
 }
 
 //prediction based on selecting either a 2bit bimodal predictor table
 //or a gshare predictor table;
-void tournamentPredictor(unsigned long long int& cp, 
-	unsigned long long int& b,
+void tournamentPredictor(int& cp, 
+	int& b,
 	ifstream& f,
 	int predTableSize,
 	unsigned int gHRMask)
 {
-	assert(predTableSize > 0 && gHRMask >= 0 && "prediction table size must be > 0");
+	assert(predTableSize > 0 && "prediction table size must be > 0");
 	resetIfstream(f);
 	unsigned long long int addr, target;
 	string behavior;
@@ -290,25 +287,66 @@ void tournamentPredictor(unsigned long long int& cp,
 	}
 }
 
+void branchTargetBufferPredictor(int& cp, 
+	int& cacheHits,
+	ifstream& f,
+	int predTableSize,
+	int cacheSize)
+{
+	assert(predTableSize > 0 && cacheSize > 0 && "prediction table and cache size must be > 0");
+	resetIfstream(f);
+	unsigned long long int addr, target;
+	string behavior;
+	unsigned int pcIndex;
+	vector<unsigned int> biTable = vector<unsigned int>(predTableSize, 2);
+	vector<unsigned int> cache = vector<unsigned int>(cacheSize);
+int i= 0;
+
+	while(f >> std::hex >> addr >> behavior >> target)
+	{
+		unsigned int behaviorBit = convert(behavior);
+		pcIndex = addr & (predTableSize - 1);
+
+		//if cache miss, put addr in cache;
+		if(find(cache.begin(), cache.end(), addr) == cache.end())
+		{
+			i++;
+			cache.at(addr & (cacheSize - 1)) = addr;
+		}
+		//if cache hit, check if pred is taken;
+		else
+		{
+			cacheHits++;
+			if(behaviorBit == biTable.at(pcIndex))
+				cp++;
+		}
+
+		//update prediction table;
+		if(behaviorBit != biTable.at(pcIndex))
+			biTable.at(pcIndex) = behaviorBit;
+	}
+
+cout << "misses: " << i << endl;
+}
+
 int main(int argc, char *argv[]) 
 {
-	unsigned long long int corrPred, branches;
-	corrPred = branches = 0;
-	vector<unsigned int> predTable;
+	int corrPred = 0;
+	int branches = 0;
 
 //	ifstream file("test_input.txt");
-	ifstream file("short_trace2.txt");
+	ifstream file("short_trace1.txt");
 	if(!file.is_open())
 		exit(EXIT_FAILURE);
 
 //always taken predictor;
 	alwaysPredictor(corrPred, branches, file, "T");
-	print(corrPred, branches);
+	printAndReset(corrPred, branches);
 	cout << endl;
 
 //never taken predictor;
 	alwaysPredictor(corrPred, branches, file, "NT");
-	print(corrPred, branches);
+	printAndReset(corrPred, branches);
 	cout << endl;
 
 /*
@@ -317,12 +355,12 @@ int main(int argc, char *argv[])
 	for(int i = 16; i < 64; i = i * 2)
 	{
 		bimodalPredictor(corrPred, branches, file, i, 1);
-		print(corrPred, branches);
+		printAndReset(corrPred, branches);
 	}
 	for(int i = 128; i < 4096; i = i * 2)
 	{
 		bimodalPredictor(corrPred, branches, file, i, 1);
-		print(corrPred, branches);
+		printAndReset(corrPred, branches);
 	}
 	cout << endl;
 
@@ -330,12 +368,12 @@ int main(int argc, char *argv[])
 	for(int i = 16; i < 64; i = i * 2)
 	{
 		bimodalPredictor(corrPred, branches, file, i, 2);
-		print(corrPred, branches);
+		printAndReset(corrPred, branches);
 	}
 	for(int i = 128; i < 4096; i = i * 2)
 	{
 		bimodalPredictor(corrPred, branches, file, i, 2);
-		print(corrPred, branches);
+		printAndReset(corrPred, branches);
 	}
 	cout << endl;
 
@@ -344,15 +382,20 @@ int main(int argc, char *argv[])
 	for(unsigned int i = 4; mask < 2048; mask = mask + (i * 2), i = i * 2)
 	{
 		gsharePredictor(corrPred, branches, file, 2048, mask);
-		print(corrPred, branches);
+		printAndReset(corrPred, branches);
 	}
 	cout << endl;
 
 //tournament predictor using 11 bit tables and 11 bit gHR;
 	tournamentPredictor(corrPred, branches, file, 2048, 2047);
-	print(corrPred, branches);
+	printAndReset(corrPred, branches);
 	cout << endl;
-*/
+//*/
+
+//branch target cache predictor using a 7 bit cache and 9 bit bimodal table;
+	branchTargetBufferPredictor(corrPred, branches, file, 512, 128);
+	printAndReset(corrPred, branches);
+	cout << endl;
 
 	file.close();
 	return EXIT_SUCCESS;
