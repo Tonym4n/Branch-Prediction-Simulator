@@ -288,7 +288,7 @@ void tournamentPredictor(int& cp,
 }
 
 void branchTargetBufferPredictor(int& cp, 
-	int& cacheHits,
+	int& cacheAccesses,
 	ifstream& f,
 	int predTableSize,
 	int cacheSize)
@@ -300,25 +300,37 @@ void branchTargetBufferPredictor(int& cp,
 	unsigned int pcIndex;
 	vector<unsigned int> biTable = vector<unsigned int>(predTableSize, 2);
 	vector<unsigned int> cache = vector<unsigned int>(cacheSize);
-int i= 0;
+int k= 0;
 
 	while(f >> std::hex >> addr >> behavior >> target)
 	{
 		unsigned int behaviorBit = convert(behavior);
 		pcIndex = addr & (predTableSize - 1);
 
-		//if cache miss, put addr in cache;
-		if(find(cache.begin(), cache.end(), addr) == cache.end())
+		//if cache miss, put target in cache;
+		if(cache.at(addr & (cacheSize - 1)) != target)
 		{
-			i++;
-			cache.at(addr & (cacheSize - 1)) = addr;
+			k++;
+			//if branch taken;
+			if(behaviorBit == 2)
+			{
+				cacheAccesses++;
+				if(behaviorBit == biTable.at(pcIndex))
+					cp++;
+				cache.at(addr & (cacheSize - 1)) = target;
+			}
 		}
-		//if cache hit, check if pred is taken;
+		//if cache hit, check if pred is correct;
 		else
 		{
-			cacheHits++;
+			cacheAccesses++;
 			if(behaviorBit == biTable.at(pcIndex))
 				cp++;
+			//flush from cache if not taken;
+			if(behaviorBit == 1)
+			{
+				cache.at(addr & (cacheSize - 1)) = 0;
+			}
 		}
 
 		//update prediction table;
@@ -326,7 +338,7 @@ int i= 0;
 			biTable.at(pcIndex) = behaviorBit;
 	}
 
-cout << "misses: " << i << endl;
+cout << "misses: " << k << endl;
 }
 
 int main(int argc, char *argv[]) 
