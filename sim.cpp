@@ -184,7 +184,7 @@ void gsharePredictor(int& cp,
 	}
 }
 
-//prediction based on selecting either a 2bit bimodal predictor table
+//prediction based on selecting either a 2 bit bimodal predictor table
 //or a gshare predictor table;
 void tournamentPredictor(int& cp, 
 	int& b,
@@ -287,46 +287,45 @@ void tournamentPredictor(int& cp,
 	}
 }
 
+//prediction based on a 1 bit bimodal predictor table;
+//and a buffer that holds the target addresses if the behavior is taken;
 void branchTargetBufferPredictor(int& cp, 
-	int& cacheAccesses,
+	int& bufferAccesses,
 	ifstream& f,
 	int predTableSize,
-	int cacheSize)
+	int bufferSize)
 {
-	assert(predTableSize > 0 && cacheSize > 0 && "prediction table and cache size must be > 0");
+	assert(predTableSize > 0 && bufferSize > 0 && "prediction table and buffer size must be > 0");
 	resetIfstream(f);
 	unsigned long long int addr, target;
 	string behavior;
-	unsigned int pcIndex;
+	unsigned int pcIndex, bufferIndex;
 	vector<unsigned int> biTable = vector<unsigned int>(predTableSize, 2);
-	vector<unsigned int> cache = vector<unsigned int>(cacheSize);
-int k= 0;
+	vector<unsigned int> buffer = vector<unsigned int>(bufferSize);
 
 	while(f >> std::hex >> addr >> behavior >> target)
 	{
 		unsigned int behaviorBit = convert(behavior);
 		pcIndex = addr & (predTableSize - 1);
+		bufferIndex = addr & (bufferSize - 1);
 
-		//if cache miss, put target in cache;
-		if(cache.at(addr & (cacheSize - 1)) != target)
+		//if prediction is taken;
+		if(biTable.at(pcIndex) == 2)
 		{
-			k++;
-			cache.at(addr & (cacheSize - 1)) = target;
-		}
-		//if cache hit, check if pred is correct;
-		else
-		{
-			cacheAccesses++;
-			if(behaviorBit == biTable.at(pcIndex))
-				cp++;
+			bufferAccesses++;
+			//if actual behavior is taken;
+			if(behaviorBit == 2)
+			{
+				if(buffer.at(bufferIndex) != 0)
+					cp++;
+				buffer.at(bufferIndex) = target;
+			}
 		}
 
 		//update prediction table;
 		if(behaviorBit != biTable.at(pcIndex))
 			biTable.at(pcIndex) = behaviorBit;
 	}
-
-cout << "misses: " << k << endl;
 }
 
 int main(int argc, char *argv[]) 
@@ -392,8 +391,8 @@ int main(int argc, char *argv[])
 	cout << endl;
 //*/
 
-//branch target cache predictor using a 7 bit cache and 9 bit bimodal table;
-	branchTargetBufferPredictor(corrPred, branches, file, 128, 128);
+//branch target buffer predictor using a 7 bit buffer and 9 bit bimodal table;
+	branchTargetBufferPredictor(corrPred, branches, file, 512, 512);
 	printAndReset(corrPred, branches);
 	cout << endl;
 
