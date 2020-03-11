@@ -311,14 +311,7 @@ int k= 0;
 		if(cache.at(addr & (cacheSize - 1)) != target)
 		{
 			k++;
-			//if branch taken;
-			if(behaviorBit == 2)
-			{
-				cacheAccesses++;
-				if(behaviorBit == biTable.at(pcIndex))
-					cp++;
-				cache.at(addr & (cacheSize - 1)) = target;
-			}
+			cache.at(addr & (cacheSize - 1)) = target;
 		}
 		//if cache hit, check if pred is correct;
 		else
@@ -326,11 +319,6 @@ int k= 0;
 			cacheAccesses++;
 			if(behaviorBit == biTable.at(pcIndex))
 				cp++;
-			//flush from cache if not taken;
-			if(behaviorBit == 1)
-			{
-				cache.at(addr & (cacheSize - 1)) = 0;
-			}
 		}
 
 		//update prediction table;
@@ -405,7 +393,7 @@ int main(int argc, char *argv[])
 //*/
 
 //branch target cache predictor using a 7 bit cache and 9 bit bimodal table;
-	branchTargetBufferPredictor(corrPred, branches, file, 512, 128);
+	branchTargetBufferPredictor(corrPred, branches, file, 128, 128);
 	printAndReset(corrPred, branches);
 	cout << endl;
 
