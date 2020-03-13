@@ -1,6 +1,6 @@
-#ifndef	gSharePredictor_h
-#define	gSharePredictor_h
-#include "misc.h"
+#ifndef	gSharePredictor_hh
+#define	gSharePredictor_hh
+#include "misc.hh"
 
 //prediction based on a 2 bit bimodal prediction table;
 //using the global history register to index it;

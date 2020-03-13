@@ -1,6 +1,6 @@
-#ifndef btb_h
-#define btb_h
-#include "misc.h"
+#ifndef btb_hh
+#define btb_hh
+#include "misc.hh"
 
 //prediction based on a 1 bit bimodal predictor table;
 //and a buffer that holds the target addresses if the behavior is taken;

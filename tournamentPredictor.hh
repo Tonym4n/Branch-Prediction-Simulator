@@ -1,6 +1,6 @@
-#ifndef tournamentPredictor_h
-#define tournamentPredictor_h
-#include "misc.h"
+#ifndef tournamentPredictor_hh
+#define tournamentPredictor_hh
+#include "misc.hh"
 
 //prediction based on selecting either a 2 bit bimodal predictor table
 //or a gshare predictor table;

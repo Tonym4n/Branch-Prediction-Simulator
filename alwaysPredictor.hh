@@ -1,6 +1,6 @@
-#ifndef	alwaysPredictor_h
-#define	alwaysPredictor_h
-#include "misc.h"
+#ifndef	alwaysPredictor_hh
+#define	alwaysPredictor_hh
+#include "misc.hh"
 
 //prediction based on always taken("T"), or always not-taken("NT");
 void alwaysPredictor(int& cp, 

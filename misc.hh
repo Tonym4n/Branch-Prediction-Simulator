@@ -1,5 +1,5 @@
-#ifndef misc_h
-#define misc_h
+#ifndef misc_hh
+#define misc_hh
 #include <iostream>
 #include <fstream>
 #include <vector>

@@ -1,6 +1,6 @@
-#ifndef bimodalPredictor_h
-#define bimodalPredictor_h
-#include "misc.h"
+#ifndef bimodalPredictor_hh
+#define bimodalPredictor_hh
+#include "misc.hh"
 
 //prediction based on a 1 bit bimodal prediction table("T", "NT");
 void oneBitBimodalPredictor(int& cp, 

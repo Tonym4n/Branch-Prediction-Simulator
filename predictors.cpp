@@ -1,10 +1,10 @@
 //misc contains all the relevant standard libraries such as <iostream>;
-#include "misc.h"
-#include "alwaysPredictor.h"
-#include "bimodalPredictor.h"
-#include "gSharePredictor.h"
-#include "tournamentPredictor.h"
-#include "btb.h"
+#include "misc.hh"
+#include "alwaysPredictor.hh"
+#include "bimodalPredictor.hh"
+#include "gSharePredictor.hh"
+#include "tournamentPredictor.hh"
+#include "btb.hh"
 
 //driver function to test all the different kinds of predictors;
 int main(int argc, char *argv[]) 
