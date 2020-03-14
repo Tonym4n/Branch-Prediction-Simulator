@@ -36,7 +36,6 @@ int main(int argc, char *argv[])
 	cout << " <- Always not taken predictor" << endl;
 	outFile << endl;
 
-/*
 //1bit bimodal predictor for pred table size:
 //16, 32, 128, 256, 512, 1024, and 2048;
 	for(int i = 16; i < 64; i = i * 2)
@@ -106,13 +105,14 @@ int main(int argc, char *argv[])
 	outputAndReset(corrPred, branches);
 	cout << " <- Tournament predictor" << endl;
 	outFile << endl;
-*/
+//*/
 
 //branch target buffer predictor using a 7 bit buffer and 9 bit bimodal table;
 	branchTargetBufferPredictor(corrPred, branches, inFile, 512, 512);
 	printToFile(outFile, corrPred, branches);
 	outputAndReset(corrPred, branches);
 	cout << " <- Branch target buffer predictor" << endl;
+	outFile << endl;
 
 	inFile.close();
 	outFile.close();

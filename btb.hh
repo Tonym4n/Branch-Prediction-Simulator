@@ -28,17 +28,14 @@ void branchTargetBufferPredictor(int& cp,
 		if(biTable.at(pcIndex) == 2)
 		{
 			bufferAccesses++;
-			if(behaviorBit == biTable.at(pcIndex))
+			//if target is already in buffer;
+			if(buffer.at(bufferIndex) == target)
 				cp++;
-			//if actual behavior is taken;
-			if(behaviorBit == 2)
-			{
-//				if(target == buffer.at(bufferIndex))
-//					cp++;
-				buffer.at(bufferIndex) = target;
-			}
 		}
-
+		//update buffer if behavior is taken;
+		if(behaviorBit == 2)
+			buffer.at(bufferIndex) = target;
+		
 		//update prediction table;
 		if(behaviorBit != biTable.at(pcIndex))
 			biTable.at(pcIndex) = behaviorBit;
